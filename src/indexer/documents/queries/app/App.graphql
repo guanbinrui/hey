@@ -1,0 +1,10 @@
+query App($request: AppRequest!) {
+  app(request: $request) {
+    address
+    metadata {
+      name
+      logo
+    }
+  }
+}
+

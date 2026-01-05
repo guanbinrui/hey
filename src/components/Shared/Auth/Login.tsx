@@ -1,14 +1,15 @@
 import { KeyIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "motion/react";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAccount, useDisconnect, useSignMessage } from "wagmi";
 import SingleAccount from "@/components/Shared/Account/SingleAccount";
 import Loader from "@/components/Shared/Loader";
-import { Button, Card, ErrorMessage } from "@/components/Shared/UI";
-import { HEY_APP } from "@/data/constants";
+import { Button, Card, ErrorMessage, Select } from "@/components/Shared/UI";
+import { AVAILABLE_APPS } from "@/data/contracts";
 import { ERRORS } from "@/data/errors";
+import formatAddress from "@/helpers/formatAddress";
 import errorToast from "@/helpers/errorToast";
 import reloadAllTabs from "@/helpers/reloadAllTabs";
 import {
@@ -19,6 +20,7 @@ import {
   useChallengeMutation
 } from "@/indexer/generated";
 import { signIn } from "@/store/persisted/useAuthStore";
+import { useHeyAppStore } from "@/store/persisted/useHeyAppStore";
 import { EXPANSION_EASE } from "@/variants";
 import SignupCard from "./SignupCard";
 import WalletSelector from "./WalletSelector";
@@ -33,6 +35,8 @@ const Login = ({ setHasAccounts }: LoginProps) => {
     null
   );
   const [isExpanded, setIsExpanded] = useState(true);
+  const { selectedApp: persistedApp, setSelectedApp } = useHeyAppStore();
+  const [localSelectedApp, setLocalSelectedApp] = useState(persistedApp);
 
   const onError = useCallback((error?: any) => {
     setIsSubmitting(false);
@@ -80,13 +84,23 @@ const Login = ({ setHasAccounts }: LoginProps) => {
     ? [lastLogin, ...remainingAccounts]
     : remainingAccounts;
 
+  const appOptions = useMemo(
+    () =>
+      AVAILABLE_APPS.map((app) => ({
+        label: formatAddress(app),
+        selected: app === localSelectedApp,
+        value: app
+      })),
+    [localSelectedApp]
+  );
+
   const handleSign = async (account: string) => {
     const isManager = allAccounts.some(
       ({ account: a, __typename }) =>
         __typename === "AccountManaged" && a.address === account
     );
 
-    const meta = { account, app: HEY_APP };
+    const meta = { account, app: localSelectedApp };
     const request: ChallengeRequest = isManager
       ? { accountManager: { manager: address, ...meta } }
       : { accountOwner: { owner: address, ...meta } };
@@ -116,6 +130,7 @@ const Login = ({ setHasAccounts }: LoginProps) => {
       if (auth.data?.authenticate.__typename === "AuthenticationTokens") {
         const accessToken = auth.data?.authenticate.accessToken;
         const refreshToken = auth.data?.authenticate.refreshToken;
+        setSelectedApp(localSelectedApp);
         signIn({ accessToken, refreshToken });
         reloadAllTabs();
         return;
@@ -130,6 +145,17 @@ const Login = ({ setHasAccounts }: LoginProps) => {
   return activeConnector?.id ? (
     <div className="space-y-3">
       <div className="space-y-2.5">
+        <div className="w-full">
+          <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            App Address
+          </label>
+          <Select
+            className="w-full"
+            defaultValue={localSelectedApp}
+            onChange={(value) => setLocalSelectedApp(value as string)}
+            options={appOptions}
+          />
+        </div>
         {errorChallenge || errorAuthenticate ? (
           <ErrorMessage
             className="text-red-500"

@@ -5,15 +5,16 @@ import {
   FaceSmileIcon
 } from "@heroicons/react/24/outline";
 import { account as accountMetadata } from "@lens-protocol/metadata";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAccount, useSignMessage } from "wagmi";
 import { z } from "zod";
 import AuthMessage from "@/components/Shared/Auth/AuthMessage";
-import { Button, Form, Input, useZodForm } from "@/components/Shared/UI";
-import { HEY_APP } from "@/data/constants";
+import { Button, Form, Input, Select, useZodForm } from "@/components/Shared/UI";
+import { AVAILABLE_APPS } from "@/data/contracts";
 import { ERRORS } from "@/data/errors";
 import { Regex } from "@/data/regex";
+import formatAddress from "@/helpers/formatAddress";
 import errorToast from "@/helpers/errorToast";
 import uploadMetadata from "@/helpers/uploadMetadata";
 import useHandleWrongNetwork from "@/hooks/useHandleWrongNetwork";
@@ -24,6 +25,7 @@ import {
   useChallengeMutation,
   useCreateAccountWithUsernameMutation
 } from "@/indexer/generated";
+import { useHeyAppStore } from "@/store/persisted/useHeyAppStore";
 import { useSignupStore } from ".";
 
 export const SignupMessage = () => (
@@ -54,6 +56,8 @@ const ChooseUsername = () => {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { address } = useAccount();
+  const { selectedApp: persistedApp, setSelectedApp } = useHeyAppStore();
+  const [localSelectedApp, setLocalSelectedApp] = useState(persistedApp);
   const handleWrongNetwork = useHandleWrongNetwork();
   const handleTransactionLifecycle = useTransactionLifecycle();
   const form = useZodForm({ mode: "onChange", schema: ValidationSchema });
@@ -97,6 +101,16 @@ const ChooseUsername = () => {
   const canCheck = Boolean(username && username.length > 2);
   const isInvalid = !form.formState.isValid;
 
+  const appOptions = useMemo(
+    () =>
+      AVAILABLE_APPS.map((app) => ({
+        label: formatAddress(app),
+        selected: app === localSelectedApp,
+        value: app
+      })),
+    [localSelectedApp]
+  );
+
   useAccountQuery({
     fetchPolicy: "no-cache",
     onCompleted: (data) => setIsAvailable(!data.account),
@@ -115,7 +129,7 @@ const ChooseUsername = () => {
 
       const challenge = await loadChallenge({
         variables: {
-          request: { onboardingUser: { app: HEY_APP, wallet: address } }
+          request: { onboardingUser: { app: localSelectedApp, wallet: address } }
         }
       });
 
@@ -139,6 +153,7 @@ const ChooseUsername = () => {
           accountMetadata({ name: username })
         );
 
+        setSelectedApp(localSelectedApp);
         setOnboardingToken(accessToken);
         return await createAccountWithUsername({
           context: { headers: { "X-Access-Token": accessToken } },
@@ -164,6 +179,17 @@ const ChooseUsername = () => {
   return (
     <div className="space-y-5">
       <SignupMessage />
+      <div className="w-full">
+        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+          App Address
+        </label>
+        <Select
+          className="w-full"
+          defaultValue={localSelectedApp}
+          onChange={(value) => setLocalSelectedApp(value as string)}
+          options={appOptions}
+        />
+      </div>
       <Form
         className="space-y-5 pt-3"
         form={form}
