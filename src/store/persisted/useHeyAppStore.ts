@@ -1,4 +1,4 @@
-import { AVAILABLE_APPS } from "@/data/contracts";
+import { HEY_APP } from "@/data/constants";
 import { Localstorage } from "@/data/storage";
 import { createPersistedTrackedStore } from "@/store/createTrackedStore";
 
@@ -9,7 +9,7 @@ interface State {
 
 const { useStore: useHeyAppStore } = createPersistedTrackedStore<State>(
   (set, get) => ({
-    selectedApp: AVAILABLE_APPS[0],
+    selectedApp: HEY_APP,
     setSelectedApp: (selectedApp) => {
       set(() => ({ selectedApp }));
     }

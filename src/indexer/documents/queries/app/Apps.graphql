@@ -1,0 +1,17 @@
+query Apps($request: AppsRequest!) {
+  apps(request: $request) {
+    items {
+      address
+      metadata {
+        name
+        logo
+        description
+        url
+      }
+    }
+    pageInfo {
+      ...PaginatedResultInfo
+    }
+  }
+}
+

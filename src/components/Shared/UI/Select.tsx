@@ -7,15 +7,20 @@ import {
 } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
-import { Fragment, memo, type ReactNode, useState } from "react";
+import { Fragment, memo, type ReactNode, useEffect, useRef, useState } from "react";
+import Loader from "@/components/Shared/Loader";
 import { Input } from "@/components/Shared/UI";
 import cn from "@/helpers/cn";
 
 interface SelectProps {
   className?: string;
   defaultValue?: string;
+  emptyMessage?: string;
   iconClassName?: string;
+  loading?: boolean;
   onChange: (value: any) => any;
+  onOpen?: () => void;
+  onSearch?: (query: string) => void;
   options?: {
     disabled?: boolean;
     helper?: string;
@@ -31,18 +36,43 @@ interface SelectProps {
 const Select = ({
   className,
   defaultValue,
+  emptyMessage = "No results found",
   iconClassName,
+  loading = false,
   onChange,
+  onOpen,
+  onSearch,
   options,
   showSearch = false
 }: SelectProps) => {
   const [searchValue, setSearchValue] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const hasCalledOnOpen = useRef(false);
   const selected = options?.find((option) => option.selected) || options?.[0];
+
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+    if (onSearch) {
+      onSearch(value);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && onOpen && !hasCalledOnOpen.current) {
+      onOpen();
+      hasCalledOnOpen.current = true;
+    }
+    if (!isOpen) {
+      hasCalledOnOpen.current = false;
+    }
+  }, [isOpen, onOpen]);
 
   return (
     <Listbox onChange={onChange} value={defaultValue || selected?.value}>
       <div className="relative">
         <ListboxButton
+          onClick={() => setIsOpen(true)}
+          onBlur={() => setIsOpen(false)}
           className={cn(
             "flex w-full items-center justify-between space-x-3 rounded-xl border border-gray-300 bg-white px-3 py-2 text-left outline-hidden focus:border-gray-500 focus:ring-gray-400 dark:border-gray-700 dark:bg-gray-800",
             className
@@ -76,7 +106,7 @@ const Select = ({
                   className="w-full"
                   iconLeft={<MagnifyingGlassIcon />}
                   onChange={(event) => {
-                    setSearchValue(event.target.value);
+                    handleSearchChange(event.target.value);
                   }}
                   placeholder="Search"
                   type="text"
@@ -84,50 +114,67 @@ const Select = ({
                 />
               </div>
             ) : null}
-            {options
-              ?.filter((option) =>
-                option.label.toLowerCase().includes(searchValue.toLowerCase())
-              )
-              .map((option, id) => (
-                <ListboxOption
-                  className={({ focus }: { focus: boolean }) =>
-                    cn(
-                      { "dropdown-active": focus },
-                      "m-2 cursor-pointer rounded-lg"
-                    )
-                  }
-                  disabled={option.disabled}
-                  key={id}
-                  value={option.value}
-                >
-                  {({ selected }) => (
-                    <div className="mx-2 flex flex-col space-y-0 py-1.5">
-                      <span className="flex w-full items-center justify-between space-x-3 text-gray-700 dark:text-gray-200">
-                        <span className="flex items-center space-x-2">
-                          {option.icon && (
-                            <img
-                              alt={option.label}
-                              className={iconClassName}
-                              src={option.icon}
-                            />
-                          )}
-                          <span className="block truncate">
-                            {option.htmlLabel || option.label}
+            {loading ? (
+              <div className="py-4">
+                <Loader className="my-2" message="Searching apps..." small />
+              </div>
+            ) : (
+              <>
+                {options
+                  ?.filter((option) =>
+                    option.label.toLowerCase().includes(searchValue.toLowerCase())
+                  )
+                  .map((option, id) => (
+                    <ListboxOption
+                      className={({ focus }: { focus: boolean }) =>
+                        cn(
+                          { "dropdown-active": focus },
+                          "m-2 cursor-pointer rounded-lg"
+                        )
+                      }
+                      disabled={option.disabled}
+                      key={id}
+                      value={option.value}
+                    >
+                      {({ selected }) => (
+                        <div className="mx-2 flex flex-col space-y-0 py-1.5">
+                          <span className="flex w-full items-center justify-between space-x-3 text-gray-700 dark:text-gray-200">
+                            <span className="flex items-center space-x-2">
+                              {option.icon && (
+                                <img
+                                  alt={option.label}
+                                  className={iconClassName}
+                                  src={option.icon}
+                                />
+                              )}
+                              <span className="block truncate">
+                                {option.htmlLabel || option.label}
+                              </span>
+                            </span>
+                            {selected ? (
+                              <CheckCircleIcon className="size-5" />
+                            ) : null}
                           </span>
-                        </span>
-                        {selected ? (
-                          <CheckCircleIcon className="size-5" />
-                        ) : null}
-                      </span>
-                      {option.helper ? (
-                        <span className="text-gray-500 text-xs dark:text-gray-200">
-                          {option.helper}
-                        </span>
-                      ) : null}
-                    </div>
-                  )}
-                </ListboxOption>
-              ))}
+                          {option.helper ? (
+                            <span className="text-gray-500 text-xs dark:text-gray-200">
+                              {option.helper}
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                    </ListboxOption>
+                  ))}
+                {!loading &&
+                options &&
+                options.filter((option) =>
+                  option.label.toLowerCase().includes(searchValue.toLowerCase())
+                ).length === 0 ? (
+                  <div className="px-4 py-4 text-center text-gray-500 text-sm dark:text-gray-400">
+                    {emptyMessage}
+                  </div>
+                ) : null}
+              </>
+            )}
           </ListboxOptions>
         </Transition>
       </div>

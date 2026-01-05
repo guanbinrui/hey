@@ -5,20 +5,19 @@ import {
   FaceSmileIcon
 } from "@heroicons/react/24/outline";
 import { account as accountMetadata } from "@lens-protocol/metadata";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useAccount, useSignMessage } from "wagmi";
 import { z } from "zod";
 import AuthMessage from "@/components/Shared/Auth/AuthMessage";
-import { Button, Form, Input, Select, useZodForm } from "@/components/Shared/UI";
-import { AVAILABLE_APPS } from "@/data/contracts";
+import { Button, Form, Input, useZodForm } from "@/components/Shared/UI";
 import { ERRORS } from "@/data/errors";
 import { Regex } from "@/data/regex";
-import formatAddress from "@/helpers/formatAddress";
 import errorToast from "@/helpers/errorToast";
 import uploadMetadata from "@/helpers/uploadMetadata";
 import useHandleWrongNetwork from "@/hooks/useHandleWrongNetwork";
 import useTransactionLifecycle from "@/hooks/useTransactionLifecycle";
+import AppSelector from "../AppSelector";
 import {
   useAccountQuery,
   useAuthenticateMutation,
@@ -101,16 +100,6 @@ const ChooseUsername = () => {
   const canCheck = Boolean(username && username.length > 2);
   const isInvalid = !form.formState.isValid;
 
-  const appOptions = useMemo(
-    () =>
-      AVAILABLE_APPS.map((app) => ({
-        label: formatAddress(app),
-        selected: app === localSelectedApp,
-        value: app
-      })),
-    [localSelectedApp]
-  );
-
   useAccountQuery({
     fetchPolicy: "no-cache",
     onCompleted: (data) => setIsAvailable(!data.account),
@@ -183,11 +172,9 @@ const ChooseUsername = () => {
         <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
           App Address
         </label>
-        <Select
-          className="w-full"
+        <AppSelector
           defaultValue={localSelectedApp}
           onChange={(value) => setLocalSelectedApp(value as string)}
-          options={appOptions}
         />
       </div>
       <Form

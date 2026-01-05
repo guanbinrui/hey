@@ -71,13 +71,13 @@ const Footer = () => {
         target="_blank"
       >
         <Image
-          alt={data?.app?.metadata?.name || "App"}
+          alt={data?.app?.metadata?.name || formatAddress(selectedApp)}
           className="size-4 rounded"
           height={16}
           src={appLogo}
           width={16}
         />
-        {formatAddress(selectedApp)}
+        {data?.app?.metadata?.name || formatAddress(selectedApp)}
       </Link>
     </footer>
   );
