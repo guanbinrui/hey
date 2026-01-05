@@ -54,15 +54,20 @@ const AppSelector = ({ defaultValue, onChange }: AppSelectorProps) => {
   const [hasLoaded, setHasLoaded] = useState(false);
   const selectedApp = defaultValue || HEY_APP;
 
-  const [fetchApps, { data, loading }] = useLazyQuery(APPS_QUERY);
+  const [fetchApps, { data, loading }] = useLazyQuery(APPS_QUERY, {
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true
+  });
   const [fetchHeyApp, { data: heyAppQueryData }] = useLazyQuery(APP_QUERY);
+
+  const remoteApps: App[] = data?.apps?.items || [];
 
   useEffect(() => {
     if (!hasLoaded) {
       fetchApps({
         variables: {
           request: {
-            orderBy: AppsOrderBy.Alphabetical,
+            orderBy: AppsOrderBy.LatestFirst,
             pageSize: PageSize.Fifty
           }
         }
@@ -73,22 +78,27 @@ const AppSelector = ({ defaultValue, onChange }: AppSelectorProps) => {
         }
       });
       setHasLoaded(true);
+    } else if (debouncedSearchQuery.trim().length > 0) {
+      fetchApps({
+        variables: {
+          request: {
+            filter: { searchQuery: debouncedSearchQuery },
+            orderBy: AppsOrderBy.LatestFirst,
+            pageSize: PageSize.Fifty
+          }
+        }
+      });
     } else {
       fetchApps({
         variables: {
           request: {
-            filter: debouncedSearchQuery.trim().length > 0
-              ? { searchQuery: debouncedSearchQuery }
-              : undefined,
-            orderBy: AppsOrderBy.Alphabetical,
+            orderBy: AppsOrderBy.LatestFirst,
             pageSize: PageSize.Fifty
           }
         }
       });
     }
   }, [debouncedSearchQuery, fetchApps, fetchHeyApp, hasLoaded]);
-
-  const remoteApps: App[] = data?.apps?.items || [];
   const heyApp: App | null = heyAppQueryData?.app || null;
   
   const allApps = useMemo(() => {
@@ -145,7 +155,7 @@ const AppSelector = ({ defaultValue, onChange }: AppSelectorProps) => {
       fetchApps({
         variables: {
           request: {
-            orderBy: AppsOrderBy.Alphabetical,
+            orderBy: AppsOrderBy.LatestFirst,
             pageSize: PageSize.Fifty
           }
         }
@@ -155,7 +165,6 @@ const AppSelector = ({ defaultValue, onChange }: AppSelectorProps) => {
   };
 
   const isSearching = loading && (debouncedSearchQuery.trim().length > 0 || !hasLoaded);
-  const isEmpty = !loading && hasLoaded && appOptions.length === 0;
   const emptyMessage = debouncedSearchQuery.trim().length > 0
     ? `No apps found for "${debouncedSearchQuery}"`
     : "No apps available";
@@ -170,7 +179,7 @@ const AppSelector = ({ defaultValue, onChange }: AppSelectorProps) => {
       onChange={onChange}
       onOpen={handleOpen}
       onSearch={handleSearch}
-      options={isEmpty ? [] : appOptions}
+      options={appOptions}
       showSearch
     />
   );
